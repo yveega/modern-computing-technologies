@@ -1,5 +1,6 @@
 from DE_solver import solve_DE_01
 from collections.abc import Callable
+import matplotlib.pyplot as plt
 import math
 
 
@@ -32,5 +33,23 @@ def test(n: int):
 
 
 print(f" {'N':<6} | {'C-norm':>25} | {'L2-norm':>25}")
-for n in range(3, 20):
-    print(" {:<6} | {:>25} | {:>25}".format(2 ** n, *test(2 ** n)))
+n_list = []
+c_norm = []
+l2_norm = []
+for pow in range(3, 20):
+    c, l2 = test(2 ** pow)
+    print(" {:<6} | {:>25} | {:>25}".format(2 ** pow, c, l2))
+    n_list.append(2 ** pow)
+    c_norm.append(c)
+    l2_norm.append(l2)
+
+plt.plot(n_list, c_norm, label="С-норма")
+plt.plot(n_list, l2_norm, label="L2-норма")
+plt.title("C-норма и L2-норма ошибки в зависимости от N")
+plt.xlabel("N")
+plt.ylabel("норма ошибки")
+plt.xscale("log")
+plt.yscale("log")
+plt.grid()
+plt.legend()
+plt.show()
