@@ -9,7 +9,6 @@ include_directories(${INMOST_INCLUDE_DIRS})
 add_definitions(${INMOST_DEFINITIONS})
 
 add_executable(main main.cpp)
-add_executable(solver src/solver.cpp)
+target_include_directories(main PUBLIC src)
 
 target_link_libraries(main ${INMOST_LIBRARIES})
-target_link_libraries(solver ${INMOST_LIBRARIES})

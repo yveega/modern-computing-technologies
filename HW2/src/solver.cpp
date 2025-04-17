@@ -6,6 +6,21 @@
 
 using namespace INMOST;
 
+/* The function solves differential equation for u(x, y)
+-Δu = f, (x, y) in (0; 1)×(0; 1)
+u = g on the border of square (0; 1)×(0; 1)
+
+f takes 2 doubles (x and y)
+g is passed as 4 functions:
+g_bottom(x) = g(x, 0)
+g_top(x) = g(x, 1)
+g_left(y) = g(0, y)
+g_right(y) = g(1, y)
+
+n is the size of grid
+
+the result is vector of values in the inner points in grid, ordered by rows
+*/
 Sparse::Vector
 solve_DE(std::function<double(double, double)> f,
             std::function<double(double)> g_bottom,
@@ -14,6 +29,7 @@ solve_DE(std::function<double(double, double)> f,
             std::function<double(double)> g_right, size_t n)
 {
     double h = 1.0 / n;
+    // Create matrix and vectors for system Ax = b
     Sparse::Matrix A;
     Sparse::Vector b;
     Sparse::Vector x;
@@ -22,6 +38,9 @@ solve_DE(std::function<double(double, double)> f,
     b.SetInterval(0, (n - 1) * (n - 1));
     x.SetInterval(0, (n - 1) * (n - 1));
 
+    // function which modifies b if (i_set, j_set) is border element
+    // and puts -1 in matrix A for non-border elements
+    // row is index of current row of system Ax = b
     std::function<void(size_t, size_t, size_t)> set_coeff =
         [&] (size_t row, size_t i_set, size_t j_set) {
             if (i_set == 0) {
@@ -36,66 +55,32 @@ solve_DE(std::function<double(double, double)> f,
                 A[row][(i_set - 1) * (n - 1) + j_set - 1] = -1.0;
             }
         };
+
+    // Building matrix A and vector b
     for (size_t i = 1; i < n; i++) {
         for (size_t j = 1; j < n; j++) {
             size_t idx = (i - 1) * (n - 1) + j - 1;
-            A[idx][idx] = 4.0;
+            A[idx][idx] = 4.0; // diagonal element
             b[idx] = f(i * h, j * h);
             set_coeff(idx, i - 1, j);
             set_coeff(idx, i + 1, j);
             set_coeff(idx, i, j - 1);
             set_coeff(idx, i, j + 1);
-            
-            // for (size_t k = 0; k < (n - 1) * (n - 1); k++) {
-            //     std::cout << A[idx][k] << ' ';
-            // }
-            // std::cout << "|  " << b[idx] << std::endl;
         }
     }
+
+    // Solving system Ax = b
     Solver S(Solver::INNER_ILU2);
-    S.SetParameter("absolute_tolerance", "1e-10");
-    S.SetParameter("relative_tolerance", "1e-6");
+    S.SetParameter("absolute_tolerance", "1e-12");
+    S.SetParameter("relative_tolerance", "1e-12");
+    S.SetParameter("drop_tolerance", "0.005");
     S.SetMatrix(A);
-    bool solve = S.Solve(b, x);
+    S.Solve(b, x);
+    std::cout << S.Iterations() << ' ' << S.IterationsTime() << ' ';
+
+    // Multiplying resulted vector x by h*h
     for (size_t i = 0; i < (n - 1) * (n - 1); i++) {
         x[i] *= h * h;
     }
     return x;
-}
-
-double f(double x, double y)
-{
-    return 50.0 * sin(5*x) * sin(5*y);
-}
-
-double u(double x, double y)
-{
-    return sin(5*x) * sin(5*y);
-}
-
-double g(double x) {
-    return 1.0;
-}
-
-int main(int argc, char *argv[]) {
-    MPI_Init(&argc, &argv);
-    size_t n = 100;
-
-    Sparse::Vector x = solve_DE(f,
-                [] (double x) { return u(x, 0.0); },
-                [] (double x) { return u(x, 1.0); },
-                [] (double y) { return u(0.0, y); },
-                [] (double y) { return u(1.0, y); }, n);
-
-    double h = 1.0 / n;
-    double norm = 0.0;
-    for (size_t i = 1; i < n; i++) {
-        for (size_t j = 1; j < n; j++) {
-            size_t idx = (i - 1) * (n - 1) + j - 1;
-            double diff = u(i * h, j * h) - x[idx];
-            norm += diff * diff;
-        }
-    }
-    std::cout << "ERROR NORM: " << norm << std::endl;
-    return 0;
 }

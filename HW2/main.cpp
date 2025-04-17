@@ -1,52 +1,63 @@
 #include "inmost.h"
-#include <stdio.h>
-#include <mpi.h>
-
+#include "solver.cpp"
+#include <iostream>
+#include <functional>
+#include <cmath>
+#include <chrono>
 
 using namespace INMOST;
-using namespace std;
 
-int main(int argc, char *argv[])
+double f(double x, double y)
 {
-    MPI_Init(&argc, &argv);
+    return 50.0 * sin(5 * x) * sin(5 * y);
+}
 
-    // Get number of nodes
-    unsigned N = 100;
+double u(double x, double y)
+{
+    return sin(5 * x) * sin(5 * y);
+}
 
-    // Create sparse matrix, RHS vector and solution vector
-    Sparse::Matrix A;
-    Sparse::Vector b;
-    Sparse::Vector sol;
-    // Set their size
-    A.SetInterval(0, N);
-    b.SetInterval(0, N);
-    sol.SetInterval(0, N);
-    // Make A identity matrix
-    // Make b: b_i = i
-    for(unsigned i = 0; i < N; i++){
-        A[i][i] = 1.0;
-        b[i] = i;
+double norm_L2_01(Sparse::Vector& x, std::function<double(double, double)> u, size_t n)
+{
+    double h = 1.0 / n;
+    double norm = 0.0;
+    for (size_t i = 1; i < n; i++) {
+        for (size_t j = 1; j < n; j++) {
+            size_t idx = (i - 1) * (n - 1) + j - 1;
+            double diff = u(i * h, j * h) - x[idx];
+            norm += diff * diff;
+        }
     }
+    return sqrt(norm);
+}
 
-    // Get solver
-    // All inner INMOST solvers are BiCGStab
-    // with different preconditioners, let's use ILU2
-    Solver S(Solver::INNER_ILU2);
-    S.SetParameter("absolute_tolerance", "1e-10");
-    S.SetParameter("relative_tolerance", "1e-6");
-
-    // Set matrix in the solver;
-    // this also computes preconditioner
-    S.SetMatrix(A);
-
-    // Solve
-    bool solved = S.Solve(b, sol);
-    cout << "num.iters: " << S.Iterations() << endl;
-    cout << "prec.time: " << S.PreconditionerTime() << endl;
-    cout << "iter.time: " << S.IterationsTime() << endl;
-    if(!solved){
-        cout << "Linear solver failure!" << endl;
-        cout << "Reason: " << S.ReturnReason() << endl;
+double norm_C_01(Sparse::Vector& x, std::function<double(double, double)> u, size_t n)
+{
+    double h = 1.0 / n;
+    double norm = 0.0;
+    for (size_t i = 1; i < n; i++) {
+        for (size_t j = 1; j < n; j++) {
+            size_t idx = (i - 1) * (n - 1) + j - 1;
+            norm = std::max(norm, abs(u(i * h, j * h) - x[idx]));
+        }
     }
-	return 0;
+    return sqrt(norm);
+}
+
+int main(int argc, char *argv[]) {
+    size_t max_n = 600;
+
+    for (size_t n = 2; n < max_n; n *= 2) {
+        std::cout << n << ' ';
+        auto start = std::chrono::steady_clock::now();
+        Sparse::Vector x = solve_DE(f,
+                    [] (double x) { return u(x, 0.0); },
+                    [] (double x) { return u(x, 1.0); },
+                    [] (double y) { return u(0.0, y); },
+                    [] (double y) { return u(1.0, y); }, n);
+        auto end = std::chrono::steady_clock::now();
+        std::chrono::duration<double> time = end - start;
+        std::cout << time.count() << ' ' << norm_L2_01(x, u, n) << ' ' << norm_C_01(x, u, n) << std::endl;
+    }
+    return 0;
 }
