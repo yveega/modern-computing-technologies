@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     for (size_t n = 2; n < max_n; n *= 2) {
         std::cout << n << ' ';
         auto start = std::chrono::steady_clock::now();
-        Sparse::Vector x = solve_DE(f,
+        Sparse::Vector x = solve_DE(f, 1.0, 1.0,
                     [] (double x) { return u(x, 0.0); },
                     [] (double x) { return u(x, 1.0); },
                     [] (double y) { return u(0.0, y); },
