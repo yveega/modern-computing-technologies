@@ -21,13 +21,13 @@ const double a = 1;
 
 double C(double x, double y)
 {
-    return 1;
+    // return 1;
 	return sin(a*x) * sin(a*y);
 }
 
 double source(double x, double y)
 {
-	return 0;
+	// return 0;
 	return -a*a * (2.*dxy * cos(a*x)*cos(a*y) - (dx+dy) * sin(a*x)*sin(a*y));
 }
 
@@ -155,7 +155,6 @@ void Problem::initProblem()
 		n.Centroid(xn);
 		n.Real(tagConcAn) = C(xn[0], xn[1]);
 		n.Real(tagSource) = source(xn[0], xn[1]);
-		cout << "source " << n.Real(tagSource) << endl;
 
 		if(n.Boundary()){
 			n.SetMarker(mrkDirNode);
@@ -305,7 +304,7 @@ double Problem::integrate_over_triangle(const Cell &c, const Tag &T)
     eta[2] = eta3[2];
     coords_from_barycentric(node_x, node_y, eta, &x, &y);
     val = approximate(c, T, x, y);
-    //printf("x = %e, y = %e, val = %e\n", x, y, val);
+    // printf("x = %e, y = %e, val = %e\n", x, y, val);
     res += w3 * val;
     eta[0] = eta3[1];
     eta[1] = eta3[2];
@@ -427,7 +426,7 @@ void Problem::assembleGlobalSystem(Sparse::Matrix &A, Sparse::Vector &rhs)
 			
 			for(unsigned j = 0; j < 3; j++){
 				if (nodes[j].GetMarker(mrkDirNode)) {
-					///
+					rhs[glob_ind[loc_ind]] -= A_loc(loc_ind, j) * nodes[j].Real(tagBCval);
 				}
 				else
 					A[glob_ind[loc_ind]][glob_ind[j]] += A_loc(loc_ind, j);//
@@ -451,7 +450,7 @@ double Problem::get_err_L2_norm() {
     double normL2 = 0.0;
     for(Mesh::iteratorCell icell = m.BeginCell(); icell != m.EndCell(); icell++){
         Cell c = icell->getAsCell();
-        normL2 += integrate_over_triangle(c, tagConcErr);
+        normL2 += integrate_over_triangle(c, tagConc);
     }
     normL2 = sqrt(normL2);
     return normL2;
@@ -474,12 +473,6 @@ void Problem::run()
 
 	assembleGlobalSystem(A, rhs);
 
-	for (int i = 0; i < N; i++) {
-		for (int j = 0; j < N; j++) {
-			cout << A[i][j] << ' ';
-		}
-		cout << "__ " << rhs[i] << endl;
-	}
 	A.Save("A.mtx");
 	rhs.Save("rhs.mtx");
 
@@ -502,7 +495,6 @@ void Problem::run()
 			continue;
 		}
 		unsigned ind = static_cast<unsigned>(n.Integer(tagGlobInd));
-		cout << "sol " << sol[ind] << endl;
 		n.Real(tagConc) = sol[ind];
 
 		n.Real(tagConcErr) = abs(n.Real(tagConcAn) - n.Real(tagConc));
