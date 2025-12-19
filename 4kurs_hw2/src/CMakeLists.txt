@@ -9,5 +9,7 @@ include_directories(${INMOST_INCLUDE_DIRS})
 add_definitions(${INMOST_DEFINITIONS})
 
 add_executable(diffusion_fem diffusion_fem.cpp)
+add_executable(diffusion_fvm diffusion_fvm.cpp)
 
 target_link_libraries(diffusion_fem ${INMOST_LIBRARIES})
+target_link_libraries(diffusion_fvm ${INMOST_LIBRARIES})

@@ -429,7 +429,7 @@ void Problem::assembleGlobalSystem(Sparse::Matrix &A, Sparse::Vector &rhs)
 					rhs[glob_ind[loc_ind]] -= A_loc(loc_ind, j) * nodes[j].Real(tagBCval);
 				}
 				else
-					A[glob_ind[loc_ind]][glob_ind[j]] += A_loc(loc_ind, j);//
+					A[glob_ind[loc_ind]][glob_ind[j]] += A_loc(loc_ind, j);
 				
 			}
 			rhs[glob_ind[loc_ind]] += rhs_loc[loc_ind];
