@@ -1,5 +1,7 @@
 #include "inmost.h"
 #include <stdio.h>
+#include <matplot/matplot.h>
+#include <vector>
 
 
 using namespace INMOST;
@@ -21,13 +23,13 @@ const double a = 1;
 
 double C(double x, double y)
 {
-    // return 0;
+    // return 1;
 	return sin(a*x) * sin(a*y);
 }
 
 double source(double x, double y)
 {
-	// return abs(x - 0.5) + abs(y - 0.5) > 0.1 ? 0 : 1;
+	// return 0;
 	return -a*a * (2.*dxy * cos(a*x)*cos(a*y) - (dx+dy) * sin(a*x)*sin(a*y));
 }
 
@@ -104,6 +106,8 @@ public:
 
 	// Get error L2-norm
     double get_err_L2_norm();
+
+	void visualize(const Tag &T);
 };
 
 Problem::Problem(Mesh &m_) : m(m_)
@@ -497,6 +501,28 @@ void Problem::run()
 		n.Real(tagConcErr) = abs(n.Real(tagConcAn) - n.Real(tagConc));
 	}
 	m.Save("res.vtk");
+	visualize(tagConcErr);
+}
+
+void Problem::visualize(const Tag &T)
+{
+	unsigned N = static_cast<unsigned>(m.NumberOfNodes());
+    matplot::vector_1d X(N), Y(N), Z(N);
+    unsigned i = 0;
+    for(Mesh::iteratorNode inode = m.BeginNode(); inode != m.EndNode(); inode++){
+        Node n = inode->getAsNode();
+		double xn[2];
+		n.Centroid(xn);
+		X[i] = xn[0];
+		Y[i] = xn[1];
+		Z[i] = n.Real(T);
+		i++;
+    }
+	matplot::figure()->size(800, 800);
+	matplot::scatter(X, Y, 700 / sqrt(N), Z)->marker_face(true).marker_face_alpha(0.5);
+	matplot::colorbar();
+
+    matplot::show();
 }
 
 int main(int argc, char ** argv)
