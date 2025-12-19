@@ -21,13 +21,13 @@ const double a = 1;
 
 double C(double x, double y)
 {
-    // return 1;
+    // return 0;
 	return sin(a*x) * sin(a*y);
 }
 
 double source(double x, double y)
 {
-	// return 0;
+	// return abs(x - 0.5) + abs(y - 0.5) > 0.1 ? 0 : 1;
 	return -a*a * (2.*dxy * cos(a*x)*cos(a*y) - (dx+dy) * sin(a*x)*sin(a*y));
 }
 
@@ -168,6 +168,7 @@ void Problem::initProblem()
 		n.Real(tagConcErr) = 0.0;
 	}
 	printf("Number of Dirichlet nodes: %d\n", numDirNodes);
+	printf("Number of cells: %u\n", m.NumberOfCells());
 }
 
 // Piecewise linear "pyramid" basis function, more precisely, its restricition to 1 triangle
@@ -381,16 +382,11 @@ void Problem::assembleLocalSystem(const Cell &c, rMatrix &A_loc, rMatrix &rhs_lo
 	 rMatrix grads[3];
 	 for(unsigned i = 0; i < 3; i++){
 		grads[i] = basis_func_grad(c, nodes[i]);
-		rhs_loc(i, 0) = 0;
 		for (unsigned j = 0; j <= i; j++) {
 			A_loc(i, j) = (grads[j].Transpose() * D * grads[i])(0, 0);
 			A_loc(j, i) = A_loc(i, j);
-			double add_rhs = nodes[i].Real(tagSource) * nodes[j].Real(tagSource) * A_loc(i, j);
-			rhs_loc(i, 0) += add_rhs;
-			if (j != i) {
-				rhs_loc(j, 0) += add_rhs;
-			}
 		}
+		rhs_loc(i, 0) += nodes[i].Real(tagSource) / 3;
 	 }
 	 
 }
@@ -429,7 +425,7 @@ void Problem::assembleGlobalSystem(Sparse::Matrix &A, Sparse::Vector &rhs)
 					rhs[glob_ind[loc_ind]] -= A_loc(loc_ind, j) * nodes[j].Real(tagBCval);
 				}
 				else
-					A[glob_ind[loc_ind]][glob_ind[j]] += A_loc(loc_ind, j);//
+					A[glob_ind[loc_ind]][glob_ind[j]] += A_loc(loc_ind, j);
 				
 			}
 			rhs[glob_ind[loc_ind]] += rhs_loc[loc_ind];
@@ -478,6 +474,7 @@ void Problem::run()
 
 	string solver_name = "inner_mptiluc";
 	Solver S(solver_name);
+	S.SetParameter("drop_tolerance", "0");
 
 	S.SetMatrix(A);
 	bool solved = S.Solve(rhs, sol);
